@@ -3,6 +3,7 @@
 
 
 Use Case: Brew Guide Agent 
+```mermaid
 flowchart TD
     START([START])
     END([END])
