@@ -62,3 +62,38 @@ class DisplayResultStreamlit:
                     st.error(f"News Not Generated or File not found: {AI_NEWS_PATH}")
                 except Exception as e:
                     st.error(f"An error occurred: {str(e)}")
+        
+        elif usecase == "Brew Guide":
+            query = user_message
+
+            # Show user query once
+            with st.chat_message("user"):
+                st.write(query)
+
+            # Spinner is optional but recommended (tool calls + loops can take time)
+            with st.spinner("Researching & generating brew guide... ☕"):
+                initial_state = {
+                    "messages": [HumanMessage(content=query)],
+                    "tool_calls_count": 0,
+                    "revision_count": 0,
+                    "needs_revision": False,
+                }
+
+                try:
+                    res = graph.invoke(initial_state)
+                except Exception as e:
+                    st.error(f"Brew Guide failed: {e}")
+                    raise
+
+            # Show final output only (last message)
+            final_msg = res["messages"][-1]
+            final_text = getattr(final_msg, "content", str(final_msg))
+
+            with st.chat_message("assistant"):
+                st.markdown(final_text)
+
+            # Optional: show tool logs in an expander
+            with st.expander("Show research steps (optional)"):
+                for m in res["messages"]:
+                    if type(m) == ToolMessage:
+                        st.write(m.content)
