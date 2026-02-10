@@ -10,6 +10,7 @@ from src.langgraphagenticai.nodes.ai_news_node import AINewsNode
 from langchain_core.messages import SystemMessage
 
 
+
 class GraphBuilder:
     def __init__(self,model):
         self.llm=model
@@ -160,17 +161,41 @@ class GraphBuilder:
             messages = state.get("messages", [])
             tool_calls_count = state.get("tool_calls_count", 0)
 
+            # system = SystemMessage(content=
+            #     "You are BrewGuideAgent.\n"
+            #     "Goal: produce an accurate, practical brew guide.\n"
+            #     "Step right now: RESEARCH ONLY.\n\n"
+            #     "Rules:\n"
+            #     f"- You may call the Tavily search tool up to 2 times. So far used: {tool_calls_count}.\n"
+            #     "- Use Tavily to find credible guidance relevant to the user's query.\n"
+            #     "- If you already have enough information from prior tool results in this conversation, DO NOT call tools again.\n"
+            #     "- Do NOT write the brew guide yet. Only research and gather sources."
+            # )
+            
+            # system = SystemMessage(content=
+            #     "You are BrewGuideAgent.\n"
+            #     "You MUST use the TavilySearchResults tool to search the web before doing anything else.\n"
+            #     "Do NOT write any brew guide yet.\n"
+            #     "Your only job in this step is to call TavilySearchResults with a good search query.\n"
+            #     "If you already used Tavily twice, stop calling tools and proceed.\n"
+            # )
+            # system = SystemMessage(content=
+            #     "You are BrewGuideAgent.\n"
+            #     "In this step you MUST call the tool TavilySearchResults.\n"
+            #     "Return ONLY a tool call. Do not write any normal text.\n"
+            #     "Search for: brewing guidance for the user's query.\n"
+            # )
             system = SystemMessage(content=
-                "You are BrewGuideAgent.\n"
-                "Goal: produce an accurate, practical brew guide.\n"
-                "Step right now: RESEARCH ONLY.\n\n"
-                "Rules:\n"
-                f"- You may call the Tavily search tool up to 2 times. So far used: {tool_calls_count}.\n"
-                "- Use Tavily to find credible guidance relevant to the user's query.\n"
-                "- If you already have enough information from prior tool results in this conversation, DO NOT call tools again.\n"
-                "- Do NOT write the brew guide yet. Only research and gather sources."
+                "You are BrewGuideAgent. RESEARCH ONLY.\n"
+                "You MUST call the TavilySearchResults tool.\n\n"
+                "Steps:\n"
+                "1) From the user's message, infer the brew method/device (e.g., espresso / Flair 58 / V60 / Aeropress / moka pot). "
+                "If unknown, assume a general method and include 'coffee brewing' in the query.\n"
+                "2) Infer roast level if mentioned (light/medium/dark). If not mentioned, don't add it.\n"
+                "3) Create 2-3 targeted search queries based on those inferred details.\n"
+                "4) Call TavilySearchResults with ONE best query (or the most general if uncertain).\n\n"
+                "Return ONLY the tool call. Do not write the brew guide yet."
             )
-
             messages2 = [system] + messages
             resp = llm_with_tools.invoke(messages2)
 
@@ -178,7 +203,8 @@ class GraphBuilder:
             new_tool_calls_count = tool_calls_count + (1 if _has_tool_call({"messages": [resp]}) else 0)
 
             return {
-                "messages": [resp],
+                #"messages": [resp],
+                "messages": messages + [resp],
                 "tool_calls_count": new_tool_calls_count
             }
 
@@ -191,22 +217,55 @@ class GraphBuilder:
             """
             messages = state.get("messages", [])
 
+            # system = SystemMessage(content=
+            #     "Extract brewing parameters and key guidance from the tool outputs in the conversation.\n"
+            #     "Output ONLY markdown with these headings:\n"
+            #     "## Assumptions\n"
+            #     "## Starting recipe\n"
+            #     "## Preheat\n"
+            #     "## Preinfusion\n"
+            #     "## Pressure/profile\n"
+            #     "## Time targets\n"
+            #     "## Dial-in rules\n"
+            #     "## Notes/caveats\n"
+            #     "Be precise. If something is uncertain, say it's a starting point."
+            # )
+            # system = SystemMessage(content=
+            #     "Extract a brewing guide from ToolMessage search results.\n"
+            #     "First decide the brew method/device from the user query and sources.\n"
+            #     "If espresso/lever → include dose, yield/ratio, temp, preheat, preinfusion, pressure, time.\n"
+            #     "If pour-over → include dose, ratio, grind, water temp, bloom, pours, total time.\n"
+            #     "If unknown → produce a general guide and ask 1 follow-up question at the end (device?).\n"
+            #     "Do not invent details not supported by sources."
+            #     "If the sources mention a different device than the user's device, add a note under 'Assumptions' explaining the mismatch and how you adapted it.\n"
+            # )
+            
             system = SystemMessage(content=
-                "Extract brewing parameters and key guidance from the tool outputs in the conversation.\n"
-                "Output ONLY markdown with these headings:\n"
-                "## Assumptions\n"
-                "## Starting recipe\n"
-                "## Preheat\n"
-                "## Preinfusion\n"
-                "## Pressure/profile\n"
-                "## Time targets\n"
-                "## Dial-in rules\n"
-                "## Notes/caveats\n"
-                "Be precise. If something is uncertain, say it's a starting point."
+                "You are extracting brew PARAMETERS from ToolMessage results.\n"
+                "Do NOT write a brew guide.\n"
+                "If device is Flair 58 / lever espresso, extract these fields. If unknown, leave 'starting point'.\n\n"
+                "Output ONLY this markdown template filled in:\n"
+                "## Parameters\n"
+                "- Device: \n"
+                "- Roast: \n"
+                "- Dose_g: \n"
+                "- Yield_g: \n"
+                "- Ratio: \n"
+                "- WaterTemp_C: \n"
+                "- Preheat: \n"
+                "- Preinfusion_seconds: \n"
+                "- Preinfusion_pressure_bar: \n"
+                "- Peak_pressure_bar: \n"
+                "- Profile_notes: \n"
+                "- Target_time_seconds_excl_preinfusion: \n"
+                "## Source URLs\n"
+                "- \n"
             )
-
             resp = llm.invoke([system] + messages)
-            return {"messages": [resp]}
+            
+            #return {"messages": [resp]}
+            return {"messages": messages + [resp]}
+        
 
         # -----------------------------
         # Node: draft
@@ -217,22 +276,47 @@ class GraphBuilder:
             """
             messages = state.get("messages", [])
 
+            # system = SystemMessage(content=
+            #     "Write a beginner-friendly, step-by-step brew guide in MARKDOWN.\n"
+            #     "Use the extracted parameters in the conversation.\n\n"
+            #     "Required format:\n"
+            #     "# Brew Guide\n"
+            #     #"## Quick recipe (dose / yield / temp)\n"
+            #     "## Quick recipe\n"
+            #         "- Dose (g):\n"
+            #         "- Yield (g) and ratio (e.g., 1:2):\n"
+            #         "- Water temp (C):\n"
+            #         "- Total time (s) excluding preinfusion:\n"
+            #     "Rules:\n"
+            #         "- Never say '1 shot'. Always give yield in grams and ratio.\n"
+            #         "- Use Celsius.\n"
+            #     "## Step-by-step workflow\n"
+            #     "## Pressure / profile\n"
+            #     "## Dial-in cheatsheet (sour / bitter / slow flow / channeling)\n"
+            #     "## Safety notes\n"
+            #     "## Sources (bulleted list of URLs if present in tool output)\n"
+            #     "Keep it practical, not long."
+            # )
+            
             system = SystemMessage(content=
-                "Write a beginner-friendly, step-by-step brew guide in MARKDOWN.\n"
-                "Use the extracted parameters in the conversation.\n\n"
-                "Required format:\n"
+                "Write a brew guide in MARKDOWN using the extracted '## Parameters' content in the conversation.\n"
+                "Hard requirements:\n"
+                "- Must be at least 200 words.\n"
+                "- Must include numeric dose/yield/ratio/temp/time (use 'starting point' ranges if uncertain).\n"
+                "- Use Celsius and grams.\n"
+                "- Do NOT output only notes.\n\n"
+                "Use this exact structure and headings:\n"
                 "# Brew Guide\n"
-                "## Quick recipe (dose / yield / temp)\n"
+                "## Quick recipe\n"
                 "## Step-by-step workflow\n"
-                "## Pressure / profile\n"
-                "## Dial-in cheatsheet (sour / bitter / slow flow / channeling)\n"
-                "## Safety notes\n"
-                "## Sources (bulleted list of URLs if present in tool output)\n"
-                "Keep it practical, not long."
+                "## Pressure profile\n"
+                "## Dial-in cheatsheet\n"
+                "## Sources\n"
             )
 
             resp = llm.invoke([system] + messages)
-            return {"messages": [resp]}
+            #return {"messages": [resp]}
+            return {"messages": messages + [resp]}
 
         # -----------------------------
         # Node: review
@@ -262,7 +346,8 @@ class GraphBuilder:
             needs_revision = ("needs_revision: yes" in text)
 
             return {
-                "messages": [resp],
+                #"messages": [resp],
+                "messages": messages + [resp],
                 "needs_revision": needs_revision,
                 "revision_count": revision_count + 1
             }
@@ -276,15 +361,39 @@ class GraphBuilder:
             """
             messages = state.get("messages", [])
 
+            # system = SystemMessage(content=
+            #     "Rewrite the brew guide applying any review checklist feedback in the conversation.\n"
+            #     "Output ONLY the final MARKDOWN brew guide. No extra commentary."
+            # )
+            # system = SystemMessage(content=
+            #     "Rewrite the brew guide applying review feedback if present.\n"
+            #     "Hard requirements:\n"
+            #     "- Keep the same headings.\n"
+            #     "- Must be at least 200 words.\n"
+            #     "- Do NOT output only notes.\n"
+            #     "Output ONLY the final markdown guide."
+            # )
             system = SystemMessage(content=
-                "Rewrite the brew guide applying any review checklist feedback in the conversation.\n"
-                "Output ONLY the final MARKDOWN brew guide. No extra commentary."
+                "You are finalizing the Brew Guide.\n"
+                "Rewrite the guide using the best draft in the conversation and apply the review checklist.\n"
+                "Hard rules:\n"
+                "- Output must be valid MARKDOWN.\n"
+                "- Output must be at least 200 words.\n"
+                "- Do NOT output only a short sentence or a single character.\n"
+                "- Keep these headings exactly:\n"
+                "# Brew Guide\n"
+                "## Quick recipe\n"
+                "## Step-by-step workflow\n"
+                "## Pressure profile\n"
+                "## Dial-in cheatsheet\n"
+                "## Sources\n"
             )
-
             resp = llm.invoke([system] + messages)
-            return {"messages": [resp]}
+            #return {"messages": [resp]}
+            return {"messages": messages + [resp]}
 
-              # -----------------------------
+        
+        # -----------------------------
         # Register nodes
         # -----------------------------
         self.graph_builder.add_node("research_agent", research_agent_node)

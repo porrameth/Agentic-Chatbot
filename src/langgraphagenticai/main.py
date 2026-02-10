@@ -28,8 +28,16 @@ def load_langgraph_agenticai_app():
         user_message = st.session_state.timeframe 
     else :
         user_message = st.chat_input("Enter your message:")
-        
-    print(f"UI selected_llm = : {ui.user_controls["selected_llm"]}")
+       
+    # Save last user message
+    if user_message:
+        st.session_state["last_user_message"] = user_message 
+          
+    user_message = (user_message or "").strip()
+    if not user_message:
+            user_message = st.session_state.get("last_user_message")
+
+    print(f'UI selected_llm = : {ui.user_controls["selected_llm"]}')
     if user_message:
         try:
             ## Configure The LLM's
@@ -40,7 +48,11 @@ def load_langgraph_agenticai_app():
                 obj_llm_config=GroqLLM(user_controls_input=user_input) 
             elif ui.user_controls["selected_llm"] == "OpenAI":
                 obj_llm_config=OpenAILLM(user_controls_input=user_input) 
-            
+            else:
+                st.error(
+                    f"Unsupported LLM selection: {ui.user_controls.get('selected_llm')}"
+                )
+                return
             model=obj_llm_config.get_llm_model()
 
             if not model:
