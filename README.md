@@ -72,6 +72,24 @@ This agent demonstrates:
 
 ---
 
+### 3. Debug Mode Toggle (Show Debug)
+
+Added a UI toggle that enables a debug mode for inspecting intermediate agent behavior.
+
+When enabled, the application displays:
+
+- Tool call details  
+- Intermediate node outputs  
+- Routing decisions  
+- Revision loop behavior  
+
+This feature allows:
+
+- Better visibility into agent execution flow  
+- Easier debugging and experimentation  
+- Clear separation between user-facing output and developer diagnostics  
+
+
 # Brew Guide Agent – System Overview
 
 ## Example Inputs
@@ -223,7 +241,16 @@ The original course materials remain the intellectual property of their respecti
 
 The Brew Guide Agent and OpenAI integration are original additions created independently.
 
+## Screenshots
 
+
+### Brew Guide Output Example
+
+![Brew Guide Output](assets/brewguide_out.png)
+
+### Debug Mode Enabled
+
+![Debug Mode](assets/debug_mode.png)
 
 
 
