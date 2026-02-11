@@ -1,66 +1,74 @@
-### End to end project agentic chatbots
 # Agentic Chatbots – LangGraph Multi-Agent System
 
 A modular, graph-based LLM system built with **LangGraph**, demonstrating tool-augmented reasoning, state-driven routing, and multi-stage agent orchestration.
 
-This repository contains:
-
-1. Original learning examples from a LangGraph Udemy course  
-2. A fully original multi-stage agent: **Brew Guide Agent**
+This repository is based on one of the projects from the LangGraph Udemy course and has been extended with additional capabilities and a fully original multi-stage agent.
 
 ---
 
-## Original Udemy Scaffold
+## Original Udemy Project
 
-The original course project included:
+Course reference:
+https://www.udemy.com/course/complete-agentic-ai-bootcamp-with-langgraph-and-langchain
+
+The original project provided:
 
 ### LLM Provider
-- Groq
+- Groq (via `groqllm.py`)
 
-### Use Cases
-1. Basic Chatbot  
-2. Chatbot with Web (Tavily Search)  
-3. AI News Summarizer  
+### Implemented Use Cases
+1. Basic Chatbot (`basic_chatbot_node.py`)
+2. Chatbot with Web (`chatbot_with_Tool_node.py`)
+3. AI News Summarizer (`ai_news_node.py`)
 
-These examples demonstrated:
+### Architecture Characteristics
+- Modular node-based design
+- Graph builder abstraction (`graph_builder.py`)
+- Tool integration (Tavily search)
+- Streamlit UI layer
+- State management abstraction
 
-- Basic LangGraph construction  
-- Tool integration  
-- Streamlit UI integration  
-- Conditional routing  
-- Single-pass response generation  
+The original implementation demonstrates clear separation between:
 
-These modules are preserved for learning reference.
+- Graph orchestration
+- Node logic
+- LLM provider layer
+- Tool layer
+- UI layer
+
+These components remain intact in this repository.
 
 ---
 
 ## My Extensions
 
-### 1. OpenAI Support
+### 1. OpenAI Integration
 
-Extended the system to support:
+Added support for OpenAI models alongside Groq:
 
-- OpenAI models  
-- Configurable provider selection  
-- Unified LLM interface for Groq and OpenAI  
+- Provider abstraction maintained
+- Compatible with existing graph architecture
+- Configurable LLM selection
 
 ---
 
-### 2. Brew Guide Agent (Original Implementation)
+### 2. Brew Guide Agent (Fully Original Implementation)
 
-The Brew Guide Agent is a fully original multi-stage agent designed independently from the Udemy scaffold.
+The Brew Guide Agent is an independently designed multi-stage agent built on top of the existing graph abstraction layer.
+
+Unlike the original single-pass chatbot use cases, this agent implements a controlled, state-driven iterative workflow with explicit loop management and quality review stages.
+
+The implementation introduces additional graph nodes and routing logic without reusing the business logic of the original use cases.
 
 This agent demonstrates:
 
-- Structured research planning  
-- Tool-augmented reasoning  
-- Parameter extraction  
-- Iterative drafting  
-- Self-review loop  
+- Structured research planning with tool augmentation  
+- Controlled tool-calling loops  
+- Dedicated parameter extraction stage  
+- Iterative drafting workflow  
+- Explicit self-review and revision loop  
 - Deterministic state-based routing  
-- Configurable loop control  
-
-It is implemented as a separate graph module and does not reuse Udemy use case logic.
+- Configurable loop limits (`max_tool_calls`, `max_revisions`)  
 
 ---
 
@@ -70,6 +78,12 @@ It is implemented as a separate graph module and does not reuse Udemy use case l
 
 - `Flair 58 light roast brew guide`
 - `Cafelat Robot light roast feasibility`
+- `How to adjust espresso shot for sour taste`
+- `Aeropress inverted method medium roast`
+- `How to reduce astringency in espresso`
+- `Over-extracted espresso fix`
+
+The agent supports multiple roast levels, devices, and troubleshooting-style queries.
 
 ---
 
@@ -144,6 +158,7 @@ Two configurable parameters control iteration limits:
 max_tool_calls
 max_revisions
 ```
+
 These prevent:
 - Infinite tool loops
 - Infinite revision loops
