@@ -9,9 +9,11 @@ Use Case: Brew Guide Agent
 Example input for the Brew Guide use case: 
 	•	“Flair 58 light roast brew guide”
 	•	“Cafelat Robot light roast feasibility”
-    
+
+
 Architecture:
 ```mermaid
+
 flowchart TD
     START([START])
     END([END])
