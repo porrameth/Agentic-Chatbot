@@ -101,7 +101,7 @@ flowchart TD
 
     finalize --> END
 ```
-    ---
+
 
 
 ## Design Principles (Brew Guide Agent)
@@ -145,9 +145,54 @@ max_tool_calls
 max_revisions
 ```
 These prevent:
-	•	Infinite tool loops
-	•	Infinite revision loops
-	•	Unbounded cost
+- Infinite tool loops
+- Infinite revision loops
+- Unbounded cost
+
+### 4. Structured Intermediate Representation
+
+The agent enforces a structured extraction step before drafting.
+
+Flow:
+
+1. Research  
+2. Extract structured parameters  
+3. Draft using enforced headings  
+4. Review against checklist  
+5. Finalize  
+
+This reduces hallucination risk and improves output consistency.
+
+---
+
+## Tech Stack
+
+- LangGraph  
+- LangChain  
+- OpenAI / Groq  
+- Tavily Search API  
+- Streamlit  
+
+---
+
+## Required API Keys
+
+- OpenAI or Groq  
+- Tavily  
+
+---
+
+## Purpose of This Repository
+
+This repository demonstrates:
+
+- Evolution from tutorial-based systems  
+- Independent multi-stage agent design  
+- Practical tool-augmented LLM workflows  
+- State-based control logic  
+- Production-oriented architectural thinking  
+
+The Brew Guide Agent represents a deliberate step beyond simple chatbots toward structured, iterative AI systems.
 
 
 
@@ -158,41 +203,3 @@ These prevent:
 
 
 
-Required API Keys:
-- Groq or OpenAI
-- Tavily
-
-Use Case: Brew Guide Agent 
-
-Example input for the Brew Guide use case: 
-	•	“Flair 58 light roast brew guide”
-	•	“Cafelat Robot light roast feasibility”
-
-
-Architecture:
-```mermaid
-
-flowchart TD
-    START([START])
-    END([END])
-
-    research_agent["research_agent<br/>(LLM plans research<br/>+ may call tools)"]
-    tools["tools<br/>(Tavily search)"]
-    extract["extract<br/>(extract brew parameters)"]
-    draft["draft<br/>(write brew guide)"]
-    review["review<br/>(judge quality)"]
-    finalize["finalize<br/>(final rewrite)"]
-
-    START --> research_agent
-
-    research_agent -->|tool call<br/>& count < 2| tools
-    tools --> research_agent
-
-    research_agent -->|no tool call<br/>or max reached| extract
-    extract --> draft
-    draft --> review
-
-    review -->|needs revision<br/>& rev < 2| draft
-    review -->|ok or max reached| finalize
-
-    finalize --> END
