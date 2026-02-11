@@ -6,6 +6,7 @@ from src.langgraphagenticai.tools.search_tool import get_tools, create_tool_node
 from langgraph.prebuilt import tools_condition,ToolNode
 from src.langgraphagenticai.nodes.chatbot_with_Tool_node import ChatbotWithToolNode
 from src.langgraphagenticai.nodes.ai_news_node import AINewsNode
+from src.langgraphagenticai.nodes.brew_guide_node import BrewGuideNode
 
 from langchain_core.messages import SystemMessage
 
@@ -80,7 +81,6 @@ class GraphBuilder:
 
 
 
-# If you already import State/START/END/tools utilities at top, keep yours.
 # from src.langgraphagenticai.state.state import State
 # from langgraph.graph import START, END
 # from src.langgraphagenticai.tools.tools import get_tools
@@ -98,310 +98,309 @@ class GraphBuilder:
 
         tools = get_tools()
         tool_node = create_tool_node(tools)
+        #llm = self.llm
+        #llm_with_tools = llm.bind_tools(tools)
 
-        llm = self.llm
-        llm_with_tools = llm.bind_tools(tools)
+        brew = BrewGuideNode(self.llm,tools,max_tool_calls=2, max_revisions=2)
 
         
-   
-        
-        # -----------------------------
-        # Helpers: routing decisions
-        # -----------------------------
-        def _has_tool_call(state: "State") -> bool:
-            """Return True if the last assistant message includes a tool call request."""
-            msgs = state.get("messages", [])
-            if not msgs:
-                return False
-            last = msgs[-1]
+        # # -----------------------------
+        # # Helpers: routing decisions
+        # # -----------------------------
+        # def _has_tool_call(state: "State") -> bool:
+        #     """Return True if the last assistant message includes a tool call request."""
+        #     msgs = state.get("messages", [])
+        #     if not msgs:
+        #         return False
+        #     last = msgs[-1]
 
-            # Works for LangChain AIMessage with tool_calls
-            tool_calls = getattr(last, "tool_calls", None)
-            if tool_calls:
-                return True
+        #     # Works for LangChain AIMessage with tool_calls
+        #     tool_calls = getattr(last, "tool_calls", None)
+        #     if tool_calls:
+        #         return True
 
-            # Some versions store it in additional_kwargs
-            additional_kwargs = getattr(last, "additional_kwargs", {}) or {}
-            if additional_kwargs.get("tool_calls"):
-                return True
+        #     # Some versions store it in additional_kwargs
+        #     additional_kwargs = getattr(last, "additional_kwargs", {}) or {}
+        #     if additional_kwargs.get("tool_calls"):
+        #         return True
 
-            return False
+        #     return False
 
-        def _route_after_research_agent(state: "State") -> str:
-            """
-            If the agent is requesting a tool call and we haven't exceeded max calls,
-            go to tools. Otherwise move on to extract.
-            """
-            tool_calls_count = state.get("tool_calls_count", 0)
+        # def _route_after_research_agent(state: "State") -> str:
+        #     """
+        #     If the agent is requesting a tool call and we haven't exceeded max calls,
+        #     go to tools. Otherwise move on to extract.
+        #     """
+        #     tool_calls_count = state.get("tool_calls_count", 0)
 
-            if _has_tool_call(state) and tool_calls_count < 2:
-                return "tools"
-            return "extract"
+        #     if _has_tool_call(state) and tool_calls_count < 2:
+        #         return "tools"
+        #     return "extract"
 
-        def _route_after_review(state: "State") -> str:
-            """
-            If review says needs_revision and under max revisions, go back to draft.
-            Else finalize.
-            """
-            needs_revision = state.get("needs_revision", False)
-            revision_count = state.get("revision_count", 0)
+        # def _route_after_review(state: "State") -> str:
+        #     """
+        #     If review says needs_revision and under max revisions, go back to draft.
+        #     Else finalize.
+        #     """
+        #     needs_revision = state.get("needs_revision", False)
+        #     revision_count = state.get("revision_count", 0)
 
-            if needs_revision and revision_count < 2:
-                return "draft"
-            return "finalize"
+        #     if needs_revision and revision_count < 2:
+        #         return "draft"
+        #     return "finalize"
 
-        # -----------------------------
-        # Node: research_agent
-        # -----------------------------
-        def research_agent_node(state: "State"):
-            """
-            Agent step: decide search queries and (usually) call Tavily via tools.
-            We strongly instruct it to use Tavily first, but allow it to stop after 1-2 calls.
-            """
-            messages = state.get("messages", [])
-            tool_calls_count = state.get("tool_calls_count", 0)
+        # # -----------------------------
+        # # Node: research_agent
+        # # -----------------------------
+        # def research_agent_node(state: "State"):
+        #     """
+        #     Agent step: decide search queries and (usually) call Tavily via tools.
+        #     We strongly instruct it to use Tavily first, but allow it to stop after 1-2 calls.
+        #     """
+        #     messages = state.get("messages", [])
+        #     tool_calls_count = state.get("tool_calls_count", 0)
 
-            # system = SystemMessage(content=
-            #     "You are BrewGuideAgent.\n"
-            #     "Goal: produce an accurate, practical brew guide.\n"
-            #     "Step right now: RESEARCH ONLY.\n\n"
-            #     "Rules:\n"
-            #     f"- You may call the Tavily search tool up to 2 times. So far used: {tool_calls_count}.\n"
-            #     "- Use Tavily to find credible guidance relevant to the user's query.\n"
-            #     "- If you already have enough information from prior tool results in this conversation, DO NOT call tools again.\n"
-            #     "- Do NOT write the brew guide yet. Only research and gather sources."
-            # )
+        #     # system = SystemMessage(content=
+        #     #     "You are BrewGuideAgent.\n"
+        #     #     "Goal: produce an accurate, practical brew guide.\n"
+        #     #     "Step right now: RESEARCH ONLY.\n\n"
+        #     #     "Rules:\n"
+        #     #     f"- You may call the Tavily search tool up to 2 times. So far used: {tool_calls_count}.\n"
+        #     #     "- Use Tavily to find credible guidance relevant to the user's query.\n"
+        #     #     "- If you already have enough information from prior tool results in this conversation, DO NOT call tools again.\n"
+        #     #     "- Do NOT write the brew guide yet. Only research and gather sources."
+        #     # )
             
-            # system = SystemMessage(content=
-            #     "You are BrewGuideAgent.\n"
-            #     "You MUST use the TavilySearchResults tool to search the web before doing anything else.\n"
-            #     "Do NOT write any brew guide yet.\n"
-            #     "Your only job in this step is to call TavilySearchResults with a good search query.\n"
-            #     "If you already used Tavily twice, stop calling tools and proceed.\n"
-            # )
-            # system = SystemMessage(content=
-            #     "You are BrewGuideAgent.\n"
-            #     "In this step you MUST call the tool TavilySearchResults.\n"
-            #     "Return ONLY a tool call. Do not write any normal text.\n"
-            #     "Search for: brewing guidance for the user's query.\n"
-            # )
-            system = SystemMessage(content=
-                "You are BrewGuideAgent. RESEARCH ONLY.\n"
-                "You MUST call the TavilySearchResults tool.\n\n"
-                "Steps:\n"
-                "1) From the user's message, infer the brew method/device (e.g., espresso / Flair 58 / V60 / Aeropress / moka pot). "
-                "If unknown, assume a general method and include 'coffee brewing' in the query.\n"
-                "2) Infer roast level if mentioned (light/medium/dark). If not mentioned, don't add it.\n"
-                "3) Create 2-3 targeted search queries based on those inferred details.\n"
-                "4) Call TavilySearchResults with ONE best query (or the most general if uncertain).\n\n"
-                "Return ONLY the tool call. Do not write the brew guide yet."
-            )
-            messages2 = [system] + messages
-            resp = llm_with_tools.invoke(messages2)
+        #     # system = SystemMessage(content=
+        #     #     "You are BrewGuideAgent.\n"
+        #     #     "You MUST use the TavilySearchResults tool to search the web before doing anything else.\n"
+        #     #     "Do NOT write any brew guide yet.\n"
+        #     #     "Your only job in this step is to call TavilySearchResults with a good search query.\n"
+        #     #     "If you already used Tavily twice, stop calling tools and proceed.\n"
+        #     # )
+        #     # system = SystemMessage(content=
+        #     #     "You are BrewGuideAgent.\n"
+        #     #     "In this step you MUST call the tool TavilySearchResults.\n"
+        #     #     "Return ONLY a tool call. Do not write any normal text.\n"
+        #     #     "Search for: brewing guidance for the user's query.\n"
+        #     # )
+        #     system = SystemMessage(content=
+        #         "You are BrewGuideAgent. RESEARCH ONLY.\n"
+        #         "You MUST call the TavilySearchResults tool.\n\n"
+        #         "Steps:\n"
+        #         "1) From the user's message, infer the brew method/device (e.g., espresso / Flair 58 / V60 / Aeropress / moka pot). "
+        #         "If unknown, assume a general method and include 'coffee brewing' in the query.\n"
+        #         "2) Infer roast level if mentioned (light/medium/dark). If not mentioned, don't add it.\n"
+        #         "3) Create 2-3 targeted search queries based on those inferred details.\n"
+        #         "4) Call TavilySearchResults with ONE best query (or the most general if uncertain).\n\n"
+        #         "Return ONLY the tool call. Do not write the brew guide yet."
+        #     )
+        #     messages2 = [system] + messages
+        #     resp = llm_with_tools.invoke(messages2)
 
-            # If this response requested tool calls, increment counter (we will route to tools)
-            new_tool_calls_count = tool_calls_count + (1 if _has_tool_call({"messages": [resp]}) else 0)
+        #     # If this response requested tool calls, increment counter (we will route to tools)
+        #     new_tool_calls_count = tool_calls_count + (1 if _has_tool_call({"messages": [resp]}) else 0)
 
-            return {
-                #"messages": [resp],
-                "messages": messages + [resp],
-                "tool_calls_count": new_tool_calls_count
-            }
+        #     return {
+        #         #"messages": [resp],
+        #         "messages": messages + [resp],
+        #         "tool_calls_count": new_tool_calls_count
+        #     }
 
-        # -----------------------------
-        # Node: extract
-        # -----------------------------
-        def extract_node(state: "State"):
-            """
-            Extract structured brew parameters from the research/tool outputs.
-            """
-            messages = state.get("messages", [])
+        # # -----------------------------
+        # # Node: extract
+        # # -----------------------------
+        # def extract_node(state: "State"):
+        #     """
+        #     Extract structured brew parameters from the research/tool outputs.
+        #     """
+        #     messages = state.get("messages", [])
 
-            # system = SystemMessage(content=
-            #     "Extract brewing parameters and key guidance from the tool outputs in the conversation.\n"
-            #     "Output ONLY markdown with these headings:\n"
-            #     "## Assumptions\n"
-            #     "## Starting recipe\n"
-            #     "## Preheat\n"
-            #     "## Preinfusion\n"
-            #     "## Pressure/profile\n"
-            #     "## Time targets\n"
-            #     "## Dial-in rules\n"
-            #     "## Notes/caveats\n"
-            #     "Be precise. If something is uncertain, say it's a starting point."
-            # )
-            # system = SystemMessage(content=
-            #     "Extract a brewing guide from ToolMessage search results.\n"
-            #     "First decide the brew method/device from the user query and sources.\n"
-            #     "If espresso/lever → include dose, yield/ratio, temp, preheat, preinfusion, pressure, time.\n"
-            #     "If pour-over → include dose, ratio, grind, water temp, bloom, pours, total time.\n"
-            #     "If unknown → produce a general guide and ask 1 follow-up question at the end (device?).\n"
-            #     "Do not invent details not supported by sources."
-            #     "If the sources mention a different device than the user's device, add a note under 'Assumptions' explaining the mismatch and how you adapted it.\n"
-            # )
+        #     # system = SystemMessage(content=
+        #     #     "Extract brewing parameters and key guidance from the tool outputs in the conversation.\n"
+        #     #     "Output ONLY markdown with these headings:\n"
+        #     #     "## Assumptions\n"
+        #     #     "## Starting recipe\n"
+        #     #     "## Preheat\n"
+        #     #     "## Preinfusion\n"
+        #     #     "## Pressure/profile\n"
+        #     #     "## Time targets\n"
+        #     #     "## Dial-in rules\n"
+        #     #     "## Notes/caveats\n"
+        #     #     "Be precise. If something is uncertain, say it's a starting point."
+        #     # )
+        #     # system = SystemMessage(content=
+        #     #     "Extract a brewing guide from ToolMessage search results.\n"
+        #     #     "First decide the brew method/device from the user query and sources.\n"
+        #     #     "If espresso/lever → include dose, yield/ratio, temp, preheat, preinfusion, pressure, time.\n"
+        #     #     "If pour-over → include dose, ratio, grind, water temp, bloom, pours, total time.\n"
+        #     #     "If unknown → produce a general guide and ask 1 follow-up question at the end (device?).\n"
+        #     #     "Do not invent details not supported by sources."
+        #     #     "If the sources mention a different device than the user's device, add a note under 'Assumptions' explaining the mismatch and how you adapted it.\n"
+        #     # )
             
-            system = SystemMessage(content=
-                "You are extracting brew PARAMETERS from ToolMessage results.\n"
-                "Do NOT write a brew guide.\n"
-                "If device is Flair 58 / lever espresso, extract these fields. If unknown, leave 'starting point'.\n\n"
-                "Output ONLY this markdown template filled in:\n"
-                "## Parameters\n"
-                "- Device: \n"
-                "- Roast: \n"
-                "- Dose_g: \n"
-                "- Yield_g: \n"
-                "- Ratio: \n"
-                "- WaterTemp_C: \n"
-                "- Preheat: \n"
-                "- Preinfusion_seconds: \n"
-                "- Preinfusion_pressure_bar: \n"
-                "- Peak_pressure_bar: \n"
-                "- Profile_notes: \n"
-                "- Target_time_seconds_excl_preinfusion: \n"
-                "## Source URLs\n"
-                "- \n"
-            )
-            resp = llm.invoke([system] + messages)
+        #     system = SystemMessage(content=
+        #         "You are extracting brew PARAMETERS from ToolMessage results.\n"
+        #         "Do NOT write a brew guide.\n"
+        #         "If device is Flair 58 / lever espresso, extract these fields. If unknown, leave 'starting point'.\n\n"
+        #         "Output ONLY this markdown template filled in:\n"
+        #         "## Parameters\n"
+        #         "- Device: \n"
+        #         "- Roast: \n"
+        #         "- Dose_g: \n"
+        #         "- Yield_g: \n"
+        #         "- Ratio: \n"
+        #         "- WaterTemp_C: \n"
+        #         "- Preheat: \n"
+        #         "- Preinfusion_seconds: \n"
+        #         "- Preinfusion_pressure_bar: \n"
+        #         "- Peak_pressure_bar: \n"
+        #         "- Profile_notes: \n"
+        #         "- Target_time_seconds_excl_preinfusion: \n"
+        #         "## Source URLs\n"
+        #         "- \n"
+        #     )
+        #     resp = llm.invoke([system] + messages)
             
-            #return {"messages": [resp]}
-            return {"messages": messages + [resp]}
+        #     #return {"messages": [resp]}
+        #     return {"messages": messages + [resp]}
         
 
-        # -----------------------------
-        # Node: draft
-        # -----------------------------
-        def draft_node(state: "State"):
-            """
-            Write the first brew guide draft (structured and actionable).
-            """
-            messages = state.get("messages", [])
+        # # -----------------------------
+        # # Node: draft
+        # # -----------------------------
+        # def draft_node(state: "State"):
+        #     """
+        #     Write the first brew guide draft (structured and actionable).
+        #     """
+        #     messages = state.get("messages", [])
 
-            # system = SystemMessage(content=
-            #     "Write a beginner-friendly, step-by-step brew guide in MARKDOWN.\n"
-            #     "Use the extracted parameters in the conversation.\n\n"
-            #     "Required format:\n"
-            #     "# Brew Guide\n"
-            #     #"## Quick recipe (dose / yield / temp)\n"
-            #     "## Quick recipe\n"
-            #         "- Dose (g):\n"
-            #         "- Yield (g) and ratio (e.g., 1:2):\n"
-            #         "- Water temp (C):\n"
-            #         "- Total time (s) excluding preinfusion:\n"
-            #     "Rules:\n"
-            #         "- Never say '1 shot'. Always give yield in grams and ratio.\n"
-            #         "- Use Celsius.\n"
-            #     "## Step-by-step workflow\n"
-            #     "## Pressure / profile\n"
-            #     "## Dial-in cheatsheet (sour / bitter / slow flow / channeling)\n"
-            #     "## Safety notes\n"
-            #     "## Sources (bulleted list of URLs if present in tool output)\n"
-            #     "Keep it practical, not long."
-            # )
+        #     # system = SystemMessage(content=
+        #     #     "Write a beginner-friendly, step-by-step brew guide in MARKDOWN.\n"
+        #     #     "Use the extracted parameters in the conversation.\n\n"
+        #     #     "Required format:\n"
+        #     #     "# Brew Guide\n"
+        #     #     #"## Quick recipe (dose / yield / temp)\n"
+        #     #     "## Quick recipe\n"
+        #     #         "- Dose (g):\n"
+        #     #         "- Yield (g) and ratio (e.g., 1:2):\n"
+        #     #         "- Water temp (C):\n"
+        #     #         "- Total time (s) excluding preinfusion:\n"
+        #     #     "Rules:\n"
+        #     #         "- Never say '1 shot'. Always give yield in grams and ratio.\n"
+        #     #         "- Use Celsius.\n"
+        #     #     "## Step-by-step workflow\n"
+        #     #     "## Pressure / profile\n"
+        #     #     "## Dial-in cheatsheet (sour / bitter / slow flow / channeling)\n"
+        #     #     "## Safety notes\n"
+        #     #     "## Sources (bulleted list of URLs if present in tool output)\n"
+        #     #     "Keep it practical, not long."
+        #     # )
             
-            system = SystemMessage(content=
-                "Write a brew guide in MARKDOWN using the extracted '## Parameters' content in the conversation.\n"
-                "Hard requirements:\n"
-                "- Must be at least 200 words.\n"
-                "- Must include numeric dose/yield/ratio/temp/time (use 'starting point' ranges if uncertain).\n"
-                "- Use Celsius and grams.\n"
-                "- Do NOT output only notes.\n\n"
-                "Use this exact structure and headings:\n"
-                "# Brew Guide\n"
-                "## Quick recipe\n"
-                "## Step-by-step workflow\n"
-                "## Pressure profile\n"
-                "## Dial-in cheatsheet\n"
-                "## Sources\n"
-            )
+        #     system = SystemMessage(content=
+        #         "Write a brew guide in MARKDOWN using the extracted '## Parameters' content in the conversation.\n"
+        #         "Hard requirements:\n"
+        #         "- Must be at least 200 words.\n"
+        #         "- Must include numeric dose/yield/ratio/temp/time (use 'starting point' ranges if uncertain).\n"
+        #         "- Use Celsius and grams.\n"
+        #         "- Do NOT output only notes.\n\n"
+        #         "Use this exact structure and headings:\n"
+        #         "# Brew Guide\n"
+        #         "## Quick recipe\n"
+        #         "## Step-by-step workflow\n"
+        #         "## Pressure profile\n"
+        #         "## Dial-in cheatsheet\n"
+        #         "## Sources\n"
+        #     )
 
-            resp = llm.invoke([system] + messages)
-            #return {"messages": [resp]}
-            return {"messages": messages + [resp]}
+        #     resp = llm.invoke([system] + messages)
+        #     #return {"messages": [resp]}
+        #     return {"messages": messages + [resp]}
 
-        # -----------------------------
-        # Node: review
-        # -----------------------------
-        def review_node(state: "State"):
-            """
-            Review the draft and decide if revision is needed.
-            Sets needs_revision + increments revision_count.
-            """
-            messages = state.get("messages", [])
-            revision_count = state.get("revision_count", 0)
+        # # -----------------------------
+        # # Node: review
+        # # -----------------------------
+        # def review_node(state: "State"):
+        #     """
+        #     Review the draft and decide if revision is needed.
+        #     Sets needs_revision + increments revision_count.
+        #     """
+        #     messages = state.get("messages", [])
+        #     revision_count = state.get("revision_count", 0)
 
-            system = SystemMessage(content=
-                "Review the latest brew guide draft in the conversation.\n"
-                "Check for:\n"
-                "- missing crucial steps (especially preheat / preinfusion for light roasts)\n"
-                "- contradictions\n"
-                "- unclear instructions\n"
-                "- unsafe advice\n\n"
-                "Return:\n"
-                "1) A short markdown checklist of issues (if any)\n"
-                "2) A final line EXACTLY: NEEDS_REVISION: yes/no"
-            )
+        #     system = SystemMessage(content=
+        #         "Review the latest brew guide draft in the conversation.\n"
+        #         "Check for:\n"
+        #         "- missing crucial steps (especially preheat / preinfusion for light roasts)\n"
+        #         "- contradictions\n"
+        #         "- unclear instructions\n"
+        #         "- unsafe advice\n\n"
+        #         "Return:\n"
+        #         "1) A short markdown checklist of issues (if any)\n"
+        #         "2) A final line EXACTLY: NEEDS_REVISION: yes/no"
+        #     )
 
-            resp = llm.invoke([system] + messages)
-            text = (getattr(resp, "content", "") or "").lower()
-            needs_revision = ("needs_revision: yes" in text)
+        #     resp = llm.invoke([system] + messages)
+        #     text = (getattr(resp, "content", "") or "").lower()
+        #     needs_revision = ("needs_revision: yes" in text)
 
-            return {
-                #"messages": [resp],
-                "messages": messages + [resp],
-                "needs_revision": needs_revision,
-                "revision_count": revision_count + 1
-            }
+        #     return {
+        #         #"messages": [resp],
+        #         "messages": messages + [resp],
+        #         "needs_revision": needs_revision,
+        #         "revision_count": revision_count + 1
+        #     }
 
-        # -----------------------------
-        # Node: finalize
-        # -----------------------------
-        def finalize_node(state: "State"):
-            """
-            Produce the final brew guide, applying review feedback.
-            """
-            messages = state.get("messages", [])
+        # # -----------------------------
+        # # Node: finalize
+        # # -----------------------------
+        # def finalize_node(state: "State"):
+        #     """
+        #     Produce the final brew guide, applying review feedback.
+        #     """
+        #     messages = state.get("messages", [])
 
-            # system = SystemMessage(content=
-            #     "Rewrite the brew guide applying any review checklist feedback in the conversation.\n"
-            #     "Output ONLY the final MARKDOWN brew guide. No extra commentary."
-            # )
-            # system = SystemMessage(content=
-            #     "Rewrite the brew guide applying review feedback if present.\n"
-            #     "Hard requirements:\n"
-            #     "- Keep the same headings.\n"
-            #     "- Must be at least 200 words.\n"
-            #     "- Do NOT output only notes.\n"
-            #     "Output ONLY the final markdown guide."
-            # )
-            system = SystemMessage(content=
-                "You are finalizing the Brew Guide.\n"
-                "Rewrite the guide using the best draft in the conversation and apply the review checklist.\n"
-                "Hard rules:\n"
-                "- Output must be valid MARKDOWN.\n"
-                "- Output must be at least 200 words.\n"
-                "- Do NOT output only a short sentence or a single character.\n"
-                "- Keep these headings exactly:\n"
-                "# Brew Guide\n"
-                "## Quick recipe\n"
-                "## Step-by-step workflow\n"
-                "## Pressure profile\n"
-                "## Dial-in cheatsheet\n"
-                "## Sources\n"
-            )
-            resp = llm.invoke([system] + messages)
-            #return {"messages": [resp]}
-            return {"messages": messages + [resp]}
+        #     # system = SystemMessage(content=
+        #     #     "Rewrite the brew guide applying any review checklist feedback in the conversation.\n"
+        #     #     "Output ONLY the final MARKDOWN brew guide. No extra commentary."
+        #     # )
+        #     # system = SystemMessage(content=
+        #     #     "Rewrite the brew guide applying review feedback if present.\n"
+        #     #     "Hard requirements:\n"
+        #     #     "- Keep the same headings.\n"
+        #     #     "- Must be at least 200 words.\n"
+        #     #     "- Do NOT output only notes.\n"
+        #     #     "Output ONLY the final markdown guide."
+        #     # )
+        #     system = SystemMessage(content=
+        #         "You are finalizing the Brew Guide.\n"
+        #         "Rewrite the guide using the best draft in the conversation and apply the review checklist.\n"
+        #         "Hard rules:\n"
+        #         "- Output must be valid MARKDOWN.\n"
+        #         "- Output must be at least 200 words.\n"
+        #         "- Do NOT output only a short sentence or a single character.\n"
+        #         "- Keep these headings exactly:\n"
+        #         "# Brew Guide\n"
+        #         "## Quick recipe\n"
+        #         "## Step-by-step workflow\n"
+        #         "## Pressure profile\n"
+        #         "## Dial-in cheatsheet\n"
+        #         "## Sources\n"
+        #     )
+        #     resp = llm.invoke([system] + messages)
+        #     #return {"messages": [resp]}
+        #     return {"messages": messages + [resp]}
 
         
         # -----------------------------
         # Register nodes
         # -----------------------------
-        self.graph_builder.add_node("research_agent", research_agent_node)
+        self.graph_builder.add_node("research_agent", brew.research_agent_node)
         self.graph_builder.add_node("tools", tool_node)
-        self.graph_builder.add_node("extract", extract_node)
-        self.graph_builder.add_node("draft", draft_node)
-        self.graph_builder.add_node("review", review_node)
-        self.graph_builder.add_node("finalize", finalize_node)
+        self.graph_builder.add_node("extract", brew.extract_node)
+        self.graph_builder.add_node("draft", brew.draft_node)
+        self.graph_builder.add_node("review", brew.review_node)
+        self.graph_builder.add_node("finalize", brew.finalize_node)
 
         # -----------------------------
         # Edges
@@ -412,7 +411,7 @@ class GraphBuilder:
         #self.graph_builder.add_conditional_edges("research_agent", _route_after_research_agent)
         self.graph_builder.add_conditional_edges(
         "research_agent",
-        _route_after_research_agent,
+        brew.route_after_research_agent,
         {"tools": "tools", "extract": "extract"}
         )
 
@@ -426,7 +425,7 @@ class GraphBuilder:
         #self.graph_builder.add_conditional_edges("review", _route_after_review)
         self.graph_builder.add_conditional_edges(
          "review",
-        _route_after_review,
+        brew.route_after_review,
          {"draft": "draft", "finalize": "finalize"}
             )
         # Final step
