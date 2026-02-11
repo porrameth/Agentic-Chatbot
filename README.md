@@ -103,13 +103,6 @@ flowchart TD
 ```
     ---
 
-# ✅ CHUNK 2  
-*(From Design Principles to end)*
-
-Paste this directly **after Chunk 1**:
-
-```markdown
----
 
 ## Design Principles (Brew Guide Agent)
 
