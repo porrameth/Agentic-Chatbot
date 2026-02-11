@@ -209,6 +209,20 @@ This repository demonstrates:
 
 The Brew Guide Agent represents a deliberate step beyond simple chatbots toward structured, iterative AI systems.
 
+## How to Run
+
+1. Install dependencies
+2. Prepare API keys
+3. Run: streamlit run app.py
+
+## Attribution
+
+This repository builds upon example code from the LangGraph Udemy course referenced above.
+
+The original course materials remain the intellectual property of their respective author.
+
+The Brew Guide Agent and OpenAI integration are original additions created independently.
+
 
 
 
