@@ -143,6 +143,7 @@ Two configurable parameters control iteration limits:
 ```python
 max_tool_calls
 max_revisions
+```
 These prevent:
 	•	Infinite tool loops
 	•	Infinite revision loops
