@@ -100,6 +100,7 @@ flowchart TD
     review -->|approved or limit reached| finalize
 
     finalize --> END
+```
     ---
 
 # ✅ CHUNK 2  
