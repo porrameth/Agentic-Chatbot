@@ -254,8 +254,6 @@ The Brew Guide Agent and OpenAI integration are original additions created indep
 
 
 ## 🚀 Live Demo
-👉 [Try the Brew Guide Agent](https://agentic-chatbot-brewguide1.streamlit.app/)
-
 [![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://agentic-chatbot-brewguide1.streamlit.app/)
 
 
