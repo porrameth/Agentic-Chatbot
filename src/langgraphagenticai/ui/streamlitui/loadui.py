@@ -23,6 +23,11 @@ class LoadStreamlitUI:
             # Use case selection FIRST
             self.user_controls["selected_usecase"] = st.selectbox("Select Usecases", usecase_options, key="selected_usecase")
 
+            if st.session_state.get("prev_usecase") != st.session_state.selected_usecase:
+                st.session_state["brew_last_res"] = None
+                st.session_state["brew_last_query"] = None
+                st.session_state["brew_debug"] = None
+                st.session_state["prev_usecase"] = st.session_state.selected_usecase
             # LLM selection
             self.user_controls["selected_llm"] = st.selectbox("Select LLM", llm_options, key="selected_llm")
 
